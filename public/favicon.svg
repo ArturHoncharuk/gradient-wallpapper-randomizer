@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <radialGradient id="a" cx="30%" cy="28%" r="70%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="55%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#040810"/>
+    </radialGradient>
+    <radialGradient id="b" cx="75%" cy="70%" r="60%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="52%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.7"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="32" height="32" rx="7"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <rect width="32" height="32" fill="url(#a)"/>
+    <rect width="32" height="32" fill="url(#b)" style="mix-blend-mode:screen"/>
+    <rect width="32" height="32" fill="url(#c)"/>
+  </g>
+</svg>
