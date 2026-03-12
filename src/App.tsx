@@ -7,189 +7,219 @@ interface GradientStop {
   size: number;
 }
 
+interface Palette {
+  name: string;
+  colors: string[];
+  leakColor: string; // warm edge streak between light and dark
+}
+
+const PALETTES: Palette[] = [
+  {
+    name: "Cosmic",
+    colors: ["#4f46e5", "#7c3aed", "#0ea5e9", "#06b6d4", "#8b5cf6"],
+    leakColor: "rgba(251,146,60,0.55)",
+  },
+  {
+    name: "Sunset",
+    colors: ["#be185d", "#9f1239", "#7e22ce", "#dc2626", "#c2410c"],
+    leakColor: "rgba(253,186,116,0.6)",
+  },
+  {
+    name: "Aurora",
+    colors: ["#065f46", "#0e7490", "#4f46e5", "#047857", "#0369a1"],
+    leakColor: "rgba(167,243,208,0.45)",
+  },
+  {
+    name: "Ocean",
+    colors: ["#1e3a8a", "#0369a1", "#0891b2", "#1d4ed8", "#075985"],
+    leakColor: "rgba(186,230,253,0.5)",
+  },
+  {
+    name: "Rose",
+    colors: ["#9d174d", "#7e22ce", "#be185d", "#a21caf", "#831843"],
+    leakColor: "rgba(251,207,232,0.55)",
+  },
+  {
+    name: "Ember",
+    colors: ["#7c2d12", "#b45309", "#92400e", "#dc2626", "#78350f"],
+    leakColor: "rgba(253,224,71,0.55)",
+  },
+];
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 });
-  const [gradientStops, setGradientStops] = useState<GradientStop[]>([
-    { color: "#4f46e5", position: { x: 15, y: 25 }, size: 50 },
-    { color: "#06b6d4", position: { x: 85, y: 15 }, size: 45 },
-    { color: "#10b981", position: { x: 65, y: 85 }, size: 55 },
-    { color: "#f59e0b", position: { x: 25, y: 75 }, size: 40 },
-    { color: "#8b5cf6", position: { x: 50, y: 50 }, size: 35 },
-  ]);
+  const [warpSeed, setWarpSeed] = useState(0);
+  const [activePalette, setActivePalette] = useState<Palette>(PALETTES[0]);
+  const [gradientStops, setGradientStops] = useState<GradientStop[]>(() =>
+    makeStops(PALETTES[0].colors)
+  );
 
-  const generateRandomColor = () => {
-    const colors = [
-      "#4f46e5",
-      "#06b6d4",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#ec4899",
-      "#8b5cf6",
-      "#0891b2",
-      "#84cc16",
-      "#f97316",
-      "#6366f1",
-      "#14b8a6",
-      "#f43f5e",
-      "#a855f7",
-      "#22d3ee",
-      "#65a30d",
-      "#eab308",
-      "#3b82f6",
-      "#9333ea",
-      "#059669",
-      "#dc2626",
-      "#be185d",
-      "#7c2d12",
-      "#1e40af",
+  function makeStops(colors: string[]): GradientStop[] {
+    const positions = [
+      { x: 15, y: 25 }, { x: 85, y: 15 }, { x: 65, y: 85 },
+      { x: 25, y: 75 }, { x: 50, y: 50 },
     ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
+    return colors.slice(0, 5).map((color, i) => ({
+      color,
+      position: positions[i],
+      size: 55 + i * 3,
+    }));
+  }
 
-  const generateRandomGradient = useCallback(() => {
+  const randomizeStops = useCallback((palette: Palette) => {
+    const numStops = 4 + Math.floor(Math.random() * 3);
     const newStops: GradientStop[] = [];
-    const numStops = 4 + Math.floor(Math.random() * 2); // 4-5 stops for better coverage
-
     for (let i = 0; i < numStops; i++) {
+      const color = palette.colors[Math.floor(Math.random() * palette.colors.length)];
       newStops.push({
-        color: generateRandomColor(),
-        position: {
-          x: Math.random() * 100,
-          y: Math.random() * 100,
-        },
-        size: 35 + Math.random() * 25, // 35-60% size for better blending
+        color,
+        position: { x: Math.random() * 100, y: Math.random() * 100 },
+        size: 45 + Math.random() * 40,
       });
     }
-
     setGradientStops(newStops);
+    setWarpSeed(Math.random() * 100);
   }, []);
 
-  // Memoize color conversions to avoid repeated parsing
+  const selectPalette = useCallback((palette: Palette) => {
+    setActivePalette(palette);
+    setGradientStops(makeStops(palette.colors));
+    setWarpSeed(Math.random() * 100);
+  }, []);
+
   const processedStops = useMemo(() => {
     return gradientStops.map((stop) => {
       const hex = stop.color.replace("#", "");
       return {
         ...stop,
-        r: parseInt(hex.substr(0, 2), 16),
-        g: parseInt(hex.substr(2, 2), 16),
-        b: parseInt(hex.substr(4, 2), 16),
+        r: parseInt(hex.substring(0, 2), 16),
+        g: parseInt(hex.substring(2, 4), 16),
+        b: parseInt(hex.substring(4, 6), 16),
       };
     });
   }, [gradientStops]);
+
+  const renderToCanvas = useCallback(
+    (canvas: HTMLCanvasElement) => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // ── Phase 1: domain-warped Gaussian RBF gradient (pixel loop) ─────────
+      const imageData = ctx.createImageData(w, h);
+      const data = imageData.data;
+
+      const s = warpSeed;
+      const warpAmt1 = 0.22;
+      const warpAmt2 = 0.14;
+      const freq1 = Math.PI * 2 * 1.4;
+      const freq2 = Math.PI * 2 * 2.3;
+
+      for (let py = 0; py < h; py++) {
+        const ny = py / h;
+        for (let px = 0; px < w; px++) {
+          const nx = px / w;
+
+          // Two-pass domain warp — bends color regions into organic curves
+          const wx1 = nx + warpAmt1 * Math.sin(ny * freq1 + s * 0.7 + 0.5);
+          const wy1 = ny + warpAmt1 * Math.sin(nx * freq1 + s * 0.5 + 1.2);
+          const wx2 = wx1 + warpAmt2 * Math.sin(wy1 * freq2 + s * 1.1 + 2.1);
+          const wy2 = wy1 + warpAmt2 * Math.sin(wx1 * freq2 + s * 0.9 + 0.8);
+
+          let r = 0, g = 0, b = 0, totalW = 1e-10;
+          for (const stop of processedStops) {
+            const dx = wx2 - stop.position.x / 100;
+            const dy = wy2 - stop.position.y / 100;
+            const spread = (stop.size / 100) * 0.42;
+            const w_ = Math.exp(-(dx * dx + dy * dy) / (2 * spread * spread));
+            r += stop.r * w_;
+            g += stop.g * w_;
+            b += stop.b * w_;
+            totalW += w_;
+          }
+
+          const brightness = Math.min(1, Math.pow(totalW * 1.8, 0.65));
+          const idx = (py * w + px) * 4;
+          data[idx]     = (r / totalW) * brightness;
+          data[idx + 1] = (g / totalW) * brightness;
+          data[idx + 2] = (b / totalW) * brightness;
+          data[idx + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // ── Phase 2: radial vignette — deep dark corners ──────────────────────
+      ctx.globalCompositeOperation = "multiply";
+      const cx = w / 2, cy = h / 2;
+      const innerR = Math.min(w, h) * 0.18;
+      const outerR = Math.sqrt(cx * cx + cy * cy) * 1.05;
+      const vignette = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+      vignette.addColorStop(0, "rgba(255,255,255,1)");
+      vignette.addColorStop(0.4, "rgba(210,210,210,0.97)");
+      vignette.addColorStop(0.72, "rgba(80,80,80,0.88)");
+      vignette.addColorStop(1, "rgba(0,0,0,0.93)");
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, w, h);
+
+      // ── Phase 4: diagonal dark sweep — cinematic composition ─────────────
+      ctx.globalCompositeOperation = "multiply";
+      const diag = ctx.createLinearGradient(0, 0, w, h);
+      diag.addColorStop(0, "rgba(255,255,255,1)");
+      diag.addColorStop(0.52, "rgba(255,255,255,1)");
+      diag.addColorStop(1, "rgba(4,4,4,0.82)");
+      ctx.fillStyle = diag;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.globalCompositeOperation = "source-over";
+    },
+    [processedStops, warpSeed]
+  );
 
   const drawGradient = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cssW = Math.min(dimensions.width, 800);
+    const cssH = Math.min(dimensions.height, 450);
+
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    // Use lower DPI for preview to improve performance
-    const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2x for performance
-
-    // Set actual canvas size in memory
-    canvas.width = dimensions.width * dpr;
-    canvas.height = dimensions.height * dpr;
-
-    // Scale the canvas back down using CSS
-    canvas.style.width = Math.min(dimensions.width, 800) + "px";
-    canvas.style.height = Math.min(dimensions.height, 450) + "px";
-
-    // Scale the drawing context
     ctx.scale(dpr, dpr);
 
-    // Work with logical dimensions
-    const logicalWidth = dimensions.width;
-    const logicalHeight = dimensions.height;
+    const offscreen = document.createElement("canvas");
+    offscreen.width = cssW;
+    offscreen.height = cssH;
+    renderToCanvas(offscreen);
+    ctx.drawImage(offscreen, 0, 0, cssW, cssH);
+  }, [renderToCanvas, dimensions]);
 
-    // Clear and set base color
-    ctx.fillStyle = "#050911";
-    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-
-    // Simplified two-layer approach for better performance
-    ctx.globalCompositeOperation = "screen";
-
-    // Main gradient layer - simplified
-    processedStops.forEach((stop) => {
-      const x = (stop.position.x / 100) * logicalWidth;
-      const y = (stop.position.y / 100) * logicalHeight;
-      const radius = (stop.size / 50) * Math.min(logicalWidth, logicalHeight);
-
-      const radialGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      radialGradient.addColorStop(
-        0,
-        `rgba(${stop.r}, ${stop.g}, ${stop.b}, 0.6)`
-      );
-      radialGradient.addColorStop(
-        0.4,
-        `rgba(${stop.r}, ${stop.g}, ${stop.b}, 0.3)`
-      );
-      radialGradient.addColorStop(
-        0.8,
-        `rgba(${stop.r}, ${stop.g}, ${stop.b}, 0.1)`
-      );
-      radialGradient.addColorStop(
-        1,
-        `rgba(${stop.r}, ${stop.g}, ${stop.b}, 0)`
-      );
-
-      ctx.fillStyle = radialGradient;
-      ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-    });
-
-    // Secondary layer for depth - much simpler
-    ctx.globalCompositeOperation = "overlay";
-    processedStops.forEach((stop) => {
-      const x = (stop.position.x / 100) * logicalWidth;
-      const y = (stop.position.y / 100) * logicalHeight;
-      const radius = (stop.size / 70) * Math.min(logicalWidth, logicalHeight);
-
-      const radialGradient = ctx.createRadialGradient(
-        x,
-        y,
-        radius * 0.1,
-        x,
-        y,
-        radius
-      );
-      radialGradient.addColorStop(
-        0,
-        `rgba(${stop.r}, ${stop.g}, ${stop.b}, 0.2)`
-      );
-      radialGradient.addColorStop(
-        0.6,
-        `rgba(${stop.r}, ${stop.g}, ${stop.b}, 0.05)`
-      );
-      radialGradient.addColorStop(
-        1,
-        `rgba(${stop.r}, ${stop.g}, ${stop.b}, 0)`
-      );
-
-      ctx.fillStyle = radialGradient;
-      ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-    });
-
-    ctx.globalCompositeOperation = "source-over";
-  }, [processedStops, dimensions]);
-
-  const downloadWallpaper = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const downloadWallpaper = useCallback(() => {
+    const offscreen = document.createElement("canvas");
+    offscreen.width = dimensions.width;
+    offscreen.height = dimensions.height;
+    renderToCanvas(offscreen);
 
     const link = document.createElement("a");
     link.download = `gradient-wallpaper-${dimensions.width}x${dimensions.height}.png`;
-    link.href = canvas.toDataURL();
+    link.href = offscreen.toDataURL("image/png");
     link.click();
-  };
+  }, [renderToCanvas, dimensions]);
 
-  // Draw gradient when component mounts or when stops change (with debouncing)
   useEffect(() => {
     const timer = setTimeout(() => {
       requestAnimationFrame(drawGradient);
-    }, 150); // Slightly longer debounce for better performance
+    }, 100);
     return () => clearTimeout(timer);
   }, [drawGradient]);
 
@@ -197,57 +227,69 @@ function App() {
     <div className="app">
       <div className="header">
         <h1>Gradient Wallpaper Generator</h1>
-        <p>
-          Create beautiful gradient wallpapers with smooth color transitions
-        </p>
+        <p>Create beautiful gradient wallpapers with smooth color transitions</p>
       </div>
 
       <div className="controls">
-        <div className="dimension-controls">
-          <label>
-            Width:
-            <select
-              value={dimensions.width}
-              onChange={(e) =>
-                setDimensions((prev) => ({
-                  ...prev,
-                  width: parseInt(e.target.value),
-                }))
-              }
+        <div className="palette-row">
+          {PALETTES.map((palette) => (
+            <button
+              key={palette.name}
+              className={`palette-btn ${activePalette.name === palette.name ? "active" : ""}`}
+              onClick={() => selectPalette(palette)}
+              title={palette.name}
             >
-              <option value={1920}>1920 (HD)</option>
-              <option value={2560}>2560 (QHD)</option>
-              <option value={3840}>3840 (4K)</option>
-            </select>
-          </label>
-          <label>
-            Height:
-            <select
-              value={dimensions.height}
-              onChange={(e) =>
-                setDimensions((prev) => ({
-                  ...prev,
-                  height: parseInt(e.target.value),
-                }))
-              }
-            >
-              <option value={1080}>1080</option>
-              <option value={1440}>1440</option>
-              <option value={2160}>2160</option>
-            </select>
-          </label>
+              <span className="palette-swatches">
+                {palette.colors.slice(0, 3).map((c) => (
+                  <span key={c} className="swatch" style={{ background: c }} />
+                ))}
+              </span>
+              <span className="palette-label">{palette.name}</span>
+            </button>
+          ))}
         </div>
 
-        <div className="action-buttons">
-          <button onClick={generateRandomGradient} className="random-btn">
-            🎲 Random Colors
-          </button>
-          <button onClick={drawGradient} className="generate-btn">
-            🔄 Regenerate
-          </button>
-          <button onClick={downloadWallpaper} className="download-btn">
-            📥 Download
-          </button>
+        <div className="controls-row">
+          <div className="dimension-controls">
+            <label>
+              Width:
+              <select
+                value={dimensions.width}
+                onChange={(e) =>
+                  setDimensions((prev) => ({ ...prev, width: parseInt(e.target.value) }))
+                }
+              >
+                <option value={1920}>1920 (HD)</option>
+                <option value={2560}>2560 (QHD)</option>
+                <option value={3840}>3840 (4K)</option>
+              </select>
+            </label>
+            <label>
+              Height:
+              <select
+                value={dimensions.height}
+                onChange={(e) =>
+                  setDimensions((prev) => ({ ...prev, height: parseInt(e.target.value) }))
+                }
+              >
+                <option value={1080}>1080</option>
+                <option value={1440}>1440</option>
+                <option value={2160}>2160</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="action-buttons">
+            <button onClick={() => randomizeStops(activePalette)} className="random-btn">
+              🎲 Randomize
+            </button>
+            <button onClick={() => setWarpSeed(Math.random() * 100)} className="generate-btn">
+              🌀 Rewarp
+            </button>
+            <button onClick={downloadWallpaper} className="download-btn">
+              📥 Download
+            </button>
+          </div>
         </div>
       </div>
 
