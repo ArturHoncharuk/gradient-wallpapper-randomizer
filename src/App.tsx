@@ -219,7 +219,8 @@ function App() {
     renderToCanvas(offscreen);
 
     const link = document.createElement("a");
-    link.download = `gradient-wallpaper-${dimensions.width}x${dimensions.height}.png`;
+    const id = Math.random().toString(36).substring(2, 15);
+    link.download = `wallpaper-${id}.png`;
     link.href = offscreen.toDataURL("image/png");
     link.click();
   }, [renderToCanvas, dimensions]);
