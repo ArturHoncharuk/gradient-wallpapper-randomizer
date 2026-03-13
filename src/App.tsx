@@ -49,7 +49,7 @@ const PALETTES: Palette[] = [
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 });
+  const [dimensions, setDimensions] = useState({ width: 2560, height: 1440 });
   const [warpSeed, setWarpSeed] = useState(0);
   const [activePalette, setActivePalette] = useState<Palette>(PALETTES[0]);
   const [gradientStops, setGradientStops] = useState<GradientStop[]>(() =>
@@ -58,8 +58,11 @@ function App() {
 
   function makeStops(colors: string[]): GradientStop[] {
     const positions = [
-      { x: 15, y: 25 }, { x: 85, y: 15 }, { x: 65, y: 85 },
-      { x: 25, y: 75 }, { x: 50, y: 50 },
+      { x: 15, y: 25 },
+      { x: 85, y: 15 },
+      { x: 65, y: 85 },
+      { x: 25, y: 75 },
+      { x: 50, y: 50 },
     ];
     return colors.slice(0, 5).map((color, i) => ({
       color,
@@ -72,7 +75,8 @@ function App() {
     const numStops = 4 + Math.floor(Math.random() * 3);
     const newStops: GradientStop[] = [];
     for (let i = 0; i < numStops; i++) {
-      const color = palette.colors[Math.floor(Math.random() * palette.colors.length)];
+      const color =
+        palette.colors[Math.floor(Math.random() * palette.colors.length)];
       newStops.push({
         color,
         position: { x: Math.random() * 100, y: Math.random() * 100 },
@@ -130,7 +134,10 @@ function App() {
           const wx2 = wx1 + warpAmt2 * Math.sin(wy1 * freq2 + s * 1.1 + 2.1);
           const wy2 = wy1 + warpAmt2 * Math.sin(wx1 * freq2 + s * 0.9 + 0.8);
 
-          let r = 0, g = 0, b = 0, totalW = 1e-10;
+          let r = 0,
+            g = 0,
+            b = 0,
+            totalW = 1e-10;
           for (const stop of processedStops) {
             const dx = wx2 - stop.position.x / 100;
             const dy = wy2 - stop.position.y / 100;
@@ -144,7 +151,7 @@ function App() {
 
           const brightness = Math.min(1, Math.pow(totalW * 1.8, 0.65));
           const idx = (py * w + px) * 4;
-          data[idx]     = (r / totalW) * brightness;
+          data[idx] = (r / totalW) * brightness;
           data[idx + 1] = (g / totalW) * brightness;
           data[idx + 2] = (b / totalW) * brightness;
           data[idx + 3] = 255;
@@ -155,7 +162,8 @@ function App() {
 
       // ── Phase 2: radial vignette — deep dark corners ──────────────────────
       ctx.globalCompositeOperation = "multiply";
-      const cx = w / 2, cy = h / 2;
+      const cx = w / 2,
+        cy = h / 2;
       const innerR = Math.min(w, h) * 0.18;
       const outerR = Math.sqrt(cx * cx + cy * cy) * 1.05;
       const vignette = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
@@ -227,7 +235,9 @@ function App() {
     <div className="app">
       <div className="header">
         <h1>Gradient Wallpaper Generator</h1>
-        <p>Create beautiful gradient wallpapers with smooth color transitions</p>
+        <p>
+          Create beautiful gradient wallpapers with smooth color transitions
+        </p>
       </div>
 
       <div className="controls">
@@ -235,7 +245,9 @@ function App() {
           {PALETTES.map((palette) => (
             <button
               key={palette.name}
-              className={`palette-btn ${activePalette.name === palette.name ? "active" : ""}`}
+              className={`palette-btn ${
+                activePalette.name === palette.name ? "active" : ""
+              }`}
               onClick={() => selectPalette(palette)}
               title={palette.name}
             >
@@ -256,7 +268,10 @@ function App() {
               <select
                 value={dimensions.width}
                 onChange={(e) =>
-                  setDimensions((prev) => ({ ...prev, width: parseInt(e.target.value) }))
+                  setDimensions((prev) => ({
+                    ...prev,
+                    width: parseInt(e.target.value),
+                  }))
                 }
               >
                 <option value={1920}>1920 (HD)</option>
@@ -269,7 +284,10 @@ function App() {
               <select
                 value={dimensions.height}
                 onChange={(e) =>
-                  setDimensions((prev) => ({ ...prev, height: parseInt(e.target.value) }))
+                  setDimensions((prev) => ({
+                    ...prev,
+                    height: parseInt(e.target.value),
+                  }))
                 }
               >
                 <option value={1080}>1080</option>
@@ -280,10 +298,16 @@ function App() {
           </div>
 
           <div className="action-buttons">
-            <button onClick={() => randomizeStops(activePalette)} className="random-btn">
+            <button
+              onClick={() => randomizeStops(activePalette)}
+              className="random-btn"
+            >
               🎲 Randomize
             </button>
-            <button onClick={() => setWarpSeed(Math.random() * 100)} className="generate-btn">
+            <button
+              onClick={() => setWarpSeed(Math.random() * 100)}
+              className="generate-btn"
+            >
               🌀 Rewarp
             </button>
             <button onClick={downloadWallpaper} className="download-btn">
