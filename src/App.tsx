@@ -44,6 +44,36 @@ const PALETTES: Palette[] = [
     colors: ["#7c2d12", "#b45309", "#92400e", "#dc2626", "#78350f"],
     leakColor: "rgba(253,224,71,0.55)",
   },
+  {
+    name: "Neon",
+    colors: ["#6d28d9", "#db2777", "#0891b2", "#7c3aed", "#be185d"],
+    leakColor: "rgba(236,72,153,0.55)",
+  },
+  {
+    name: "Forest",
+    colors: ["#14532d", "#166534", "#15803d", "#365314", "#3f6212"],
+    leakColor: "rgba(187,247,208,0.45)",
+  },
+  {
+    name: "Midnight",
+    colors: ["#0f172a", "#1e1b4b", "#0c1a2e", "#1e3a5f", "#0d1b2a"],
+    leakColor: "rgba(148,163,184,0.35)",
+  },
+  {
+    name: "Candy",
+    colors: ["#ec4899", "#f97316", "#a855f7", "#f43f5e", "#d946ef"],
+    leakColor: "rgba(253,186,116,0.6)",
+  },
+  {
+    name: "Arctic",
+    colors: ["#0369a1", "#0e7490", "#155e75", "#1e40af", "#164e63"],
+    leakColor: "rgba(224,242,254,0.5)",
+  },
+  {
+    name: "Gold",
+    colors: ["#78350f", "#92400e", "#b45309", "#a16207", "#713f12"],
+    leakColor: "rgba(253,224,71,0.6)",
+  },
 ];
 
 function App() {
